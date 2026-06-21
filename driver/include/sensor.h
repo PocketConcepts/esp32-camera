@@ -96,7 +96,7 @@ typedef enum {
     FRAMESIZE_QQVGA,    // 160x120
     FRAMESIZE_128X128,    // 128x128
     FRAMESIZE_QCIF,     // 176x144
-    FRAMESIZE_HQVGA,    // 240x176
+    FRAMESIZE_PRINTER_4X3,    // 256x192
     FRAMESIZE_240X240,  // 240x240
     FRAMESIZE_QVGA,     // 320x240
     FRAMESIZE_320X320,  // 320x320
@@ -119,6 +119,9 @@ typedef enum {
     FRAMESIZE_P_FHD,    // 1080x1920
     FRAMESIZE_QSXGA,    // 2560x1920
     FRAMESIZE_5MP,      // 2592x1944
+    // Custom
+    FRAMESIZE_CUSTOM_192X256,
+
     FRAMESIZE_INVALID
 } framesize_t;
 
@@ -185,7 +188,7 @@ typedef struct {
 } sensor_id_t;
 
 typedef struct {
-    framesize_t framesize;//0 - 10
+    framesize_t framesize;//0 - 11
     bool scale;
     bool binning;
     uint8_t quality;//0 - 63

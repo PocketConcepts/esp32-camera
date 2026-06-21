@@ -27,7 +27,7 @@ const resolution_info_t resolution[FRAMESIZE_INVALID] = {
     {  160,  120, ASPECT_RATIO_4X3   }, /* QQVGA */
     {  128,  128, ASPECT_RATIO_1X1   }, /* 128x128 */
     {  176,  144, ASPECT_RATIO_5X4   }, /* QCIF  */
-    {  240,  176, ASPECT_RATIO_4X3   }, /* HQVGA */
+    {  256,  192, ASPECT_RATIO_4X3   }, /* Printer */
     {  240,  240, ASPECT_RATIO_1X1   }, /* 240x240 */
     {  320,  240, ASPECT_RATIO_4X3   }, /* QVGA  */
     {  320,  320, ASPECT_RATIO_1X1   }, /* 320x320 */
@@ -50,6 +50,9 @@ const resolution_info_t resolution[FRAMESIZE_INVALID] = {
     { 1088, 1920, ASPECT_RATIO_9X16  }, /* Portrait FHD   */
     { 2560, 1920, ASPECT_RATIO_4X3   }, /* QSXGA  */
     { 2592, 1944, ASPECT_RATIO_4X3   }, /* 5MP */
+    //  Custom
+    {  256,  192, ASPECT_RATIO_4X3   }, /* Printable Height */
+
 };
 
 camera_sensor_info_t *esp_camera_sensor_get_info(sensor_id_t *id)
