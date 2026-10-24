@@ -26,6 +26,7 @@
 #else
 #include "esp_timer.h"
 #include "esp_cache.h"
+#include "esp_memory_utils.h"
 #include "hal/cache_hal.h"
 #include "hal/cache_ll.h"
 #include "esp_idf_version.h"
@@ -100,6 +101,11 @@ static inline size_t dcache_line_size(void)
  */
 static inline void cam_drop_psram_cache(void *addr, size_t len)
 {
+    /* Frame buffers in internal RAM (fb_location DRAM) aren't cached */
+    if (!esp_ptr_external_ram(addr)) {
+        return;
+    }
+
     size_t line = dcache_line_size();
     if (line == 0) {
         line = 32; /* sane fallback */
