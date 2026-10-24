@@ -393,6 +393,21 @@ static void cam_task(void *arg)
                                 frame_buffer_event->len = cnt * cam_obj->dma_half_buffer_size;
                             } else {
                                 frame_buffer_event->len = cam_obj->recv_size;
+
+                                // The DMA writes straight into the frame buffer, so a frame
+                                // that lost bytes on the way in still looks full size: the
+                                // rows after the loss slide along and the last ones are left
+                                // over from an older frame. A whole frame is exactly this many
+                                // EOFs; drop any other.
+                                size_t expected = cam_obj->recv_size / cam_obj->dma_half_buffer_size;
+                                if (cnt != expected) {
+                                    static uint32_t short_cnt = 0;
+                                    cam_obj->frames[frame_pos].en = 1;
+                                    if (++short_cnt <= 3 || short_cnt % 100 == 0) {
+                                        ESP_CAMERA_ETS_PRINTF(DRAM_STR("cam_hal: FB-SHORT: %d of %u EOFs (%u so far)\r\n"),
+                                                              cnt, (unsigned) expected, (unsigned) short_cnt);
+                                    }
+                                }
                             }
                         } else if (!cam_obj->jpeg_mode) {
                             if (frame_buffer_event->len != cam_obj->fb_size) {

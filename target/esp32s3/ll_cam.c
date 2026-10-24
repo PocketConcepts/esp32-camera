@@ -153,10 +153,10 @@ bool ll_cam_start(cam_obj_t *cam, int frame_pos)
 {
     LCD_CAM.cam_ctrl1.cam_start = 0;
 
-    if (cam->jpeg_mode || !cam->psram_mode) {
-        GDMA.channel[cam->dma_num].in.int_clr.in_suc_eof = 1;
-        GDMA.channel[cam->dma_num].in.int_ena.in_suc_eof = 1;
-    }
+    // Also in PSRAM mode, where nothing needs copying: counting the EOFs is
+    // how cam_hal tells a whole frame from one that lost bytes on the way in
+    GDMA.channel[cam->dma_num].in.int_clr.in_suc_eof = 1;
+    GDMA.channel[cam->dma_num].in.int_ena.in_suc_eof = 1;
 
     LCD_CAM.cam_ctrl1.cam_reset = 1;
     LCD_CAM.cam_ctrl1.cam_reset = 0;
