@@ -116,6 +116,26 @@ static inline void cam_drop_psram_cache(void *addr, size_t len)
                     ESP_CACHE_MSYNC_FLAG_DIR_M2C | ESP_CACHE_MSYNC_FLAG_INVALIDATE);
 }
 
+/*
+ * Write what the CPU changed in a PSRAM frame buffer out of the cache. Lines
+ * left dirty get written back whenever the cache evicts them, which can be
+ * after the DMA has put a newer frame there: old pixels over new ones.
+ */
+static inline void cam_flush_psram_cache(void *addr, size_t len)
+{
+    if (!esp_ptr_external_ram(addr)) {
+        return;
+    }
+
+    size_t line = dcache_line_size();
+    if (line == 0) {
+        line = 32;
+    }
+    uintptr_t start = (uintptr_t)addr & ~(line - 1);
+    size_t sync_len = (len + ((uintptr_t)addr - start) + line - 1) & ~(line - 1);
+    esp_cache_msync((void *)start, sync_len, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+}
+
 /* Throttle repeated warnings printed from tight loops / ISRs.
  *
  * counter – static DRAM/IRAM uint16_t you pass in
@@ -619,9 +639,12 @@ esp_err_t cam_config(const camera_config_t *config, framesize_t frame_size, uint
     ret = cam_dma_config(config);
     CAM_CHECK_GOTO(ret == ESP_OK, "cam_dma_config failed", err);
 
+    // With only two half buffers this was 1 slot: a VSYNC that came while the
+    // task was still copying the last half buffer overflowed it, which stops
+    // the camera. A few spare slots cost nothing.
     size_t queue_size = cam_obj->dma_half_buffer_cnt - 1;
-    if (queue_size == 0) {
-        queue_size = 1;
+    if (queue_size < 4) {
+        queue_size = 4;
     }
     cam_obj->event_queue = xQueueCreate(queue_size, sizeof(cam_event_t));
     CAM_CHECK_GOTO(cam_obj->event_queue != NULL, "event_queue create failed", err);
@@ -793,11 +816,14 @@ skip_eoi_check:
             continue; /* wait for another frame */
         } else if (cam_obj->psram_mode &&
                    cam_obj->in_bytes_per_pixel != cam_obj->fb_bytes_per_pixel) {
-            /* currently used only for YUV to GRAYSCALE */
+            /* currently used only for YUV to GRAYSCALE. Drop the cache over
+             * what the DMA wrote first, so the CPU reads the new frame, and
+             * not after: that would throw away the converted pixels still in
+             * the cache, leaving the raw YUV under them. */
+            cam_drop_psram_cache(dma_buffer->buf, dma_buffer->len);
             dma_buffer->len = ll_cam_memcpy(cam_obj, dma_buffer->buf, dma_buffer->buf, dma_buffer->len);
-        }
-
-        if (cam_obj->psram_mode) {
+            cam_flush_psram_cache(dma_buffer->buf, dma_buffer->len);
+        } else if (cam_obj->psram_mode) {
             /* DMA may bypass cache, ensure full frame is visible to the app */
             cam_drop_psram_cache(dma_buffer->buf, dma_buffer->len);
         }
